@@ -36,6 +36,10 @@ contract MutualAssuranceContract {
         uint256 amount;
     }
 
+    event Assurance(address who, uint256 value);
+
+    event Resolved(bool);
+
     /**
      * @notice A commitment to a shared cause of collaboration.
      */
@@ -53,6 +57,11 @@ contract MutualAssuranceContract {
     uint256 immutable public END;
 
     /**
+     *
+     */
+    address immutable public FACTORY;
+
+    /**
      * @notice The address of the recipient when the contract resolves
      *         to the winning direction.
      */
@@ -61,22 +70,14 @@ contract MutualAssuranceContract {
     /**
      * @notice
      */
+    IAttestationStation immutable STATION;
+
+    bytes32 constant public TOPIC = bytes32("MutualAssuranceContractV0");
+
+    /**
+     * @notice
+     */
     bool public resolved;
-
-    /**
-     * @notice
-     */
-    uint256 public pot;
-
-    /**
-     * @notice
-     */
-    mapping(address => uint256) public wills;
-
-    /**
-     * @notice
-     */
-    mapping(address => bool) private players;
 
     /**
      * @notice
@@ -91,42 +92,22 @@ contract MutualAssuranceContract {
         uint256 _duration,
         uint256 _lump,
         address _commander,
-        address[] memory _players
+        address _station
     ) {
         COMMITMENT = _commitment;
         END = block.timestamp + _duration;
         LUMP = _lump;
         COMMANDER = _commander;
-
-        // i don't really like this hmm
-        uint256 length = _players.length;
-        for (uint256 i; i < length;) {
-            players[_players[i]] = true;
-            unchecked {
-                ++i;
-            }
-        }
+        FACTORY = msg.sender;
+        STATION = IAttestationStation(_station);
     }
 
     /**
      * @notice
-     *
-     * TODO: i'd like to turn this into a call to the attestation station
      */
     function isAllowed(address who) public view returns (bool) {
-        /*
-        // Have the factory make the attestations
-
-        bytes memory a = ATTESTATION_STATION.attestations(
-            address(factory),
-            who,
-            COMMITMENT
-        );
-
-        return keccak256(a) == keccak256(hex"01")
-        */
-
-        return players[who];
+        bytes memory a = STATION.attestations(address(FACTORY), who, COMMITMENT);
+        return a.length != 0;
     }
 
     /**
@@ -143,17 +124,60 @@ contract MutualAssuranceContract {
             revert TooEarly();
         }
 
+        uint256 pot = address(this).balance;
+
         // ensure that enough money was collected
-        if (pot < LUMP) {
-            lose();
-        } else {
+        bool success = pot >= LUMP;
+
+        if (success) {
             win();
+        } else {
+            lose();
         }
+
+        STATION.attest(FACTORY, TOPIC, abi.encode(success));
 
         // it has been resolved
         resolved = true;
+
+        emit Resolved(success);
     }
 
+    /**
+     * @notice `win` is called when the mutual assurance contract has enough
+     *         value in it when the contract resolves.
+     *         It will send the value to the `COMMANDER`.
+     */
+    function win() internal {
+        bool success = SafeCall.call(
+            COMMANDER,
+            gasleft(),
+            address(this).balance,
+            hex""
+        );
+
+        if (success == false) {
+            revert PleaseAccept(COMMANDER);
+        }
+
+        uint256 length = contributions.length;
+        IAttestationStation.AttestationData[] memory a = new IAttestationStation.AttestationData[](length);
+
+        unchecked {
+            for (uint256 i; i < length; ++i) {
+                Contribution memory c = contributions[i];
+
+                a[i] = IAttestationStation.AttestationData({
+                    about: c.from,
+                    key: TOPIC,
+                    val: abi.encode(c.amount)
+                });
+
+            }
+        }
+
+        STATION.attest(a);
+    }
 
     /**
      * @notice `lose` is called when the mutual assurance contract
@@ -167,41 +191,21 @@ contract MutualAssuranceContract {
      */
     function lose() internal {
         uint256 length = contributions.length;
-        for (uint256 i; i < length; ) {
-            Contribution memory c = contributions[i];
+        unchecked {
+            for (uint256 i; i < length; ++i) {
+                Contribution memory c = contributions[i];
 
-            bool success = SafeCall.call(
-                c.from,
-                gasleft(),
-                c.amount,
-                hex""
-            );
+                bool success = SafeCall.call(
+                    c.from,
+                    gasleft(),
+                    c.amount,
+                    hex""
+                );
 
-            if (success == false) {
-                revert PleaseAccept(c.from);
+                if (success == false) {
+                    revert PleaseAccept(c.from);
+                }
             }
-
-            unchecked {
-                ++i;
-            }
-        }
-    }
-
-    /**
-     * @notice `win` is called when the mutual assurance contract has enough
-     *         value in it when the contract resolves.
-     *         It will send the value to the `COMMANDER`.
-     */
-    function win() internal {
-        bool success = SafeCall.call(
-            COMMANDER,
-            gasleft(),
-            pot,
-            hex""
-        );
-
-        if (success == false) {
-            revert PleaseAccept(COMMANDER);
         }
     }
 
@@ -219,15 +223,11 @@ contract MutualAssuranceContract {
             revert NotAllowed(sender);
         }
 
-        // keep track of how much the sender has contributed
-        wills[sender] += value;
-
-        // keep track of the total amount of contributions
-        pot += value;
-
         // store the contribution in an array so that
         // it can be refunded if the contract resolves in
         // the losing direction
         contributions.push(Contribution(sender, value));
+
+        emit Assurance(sender, value);
     }
 }
