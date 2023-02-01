@@ -6,6 +6,7 @@ import { SafeCall } from "./SafeCall.sol";
 
 /**
  * @title
+ * @notice
  */
 contract MutualAssuranceContract {
     /**
@@ -31,13 +32,24 @@ contract MutualAssuranceContract {
     /**
      * @notice
      */
+    error NonReentrant();
+
+    /**
+     * @notice
+     */
     struct Contribution {
         address from;
         uint256 amount;
     }
 
+    /**
+     * @notice
+     */
     event Assurance(address who, uint256 value);
 
+    /**
+     * @notice
+     */
     event Resolved(bool);
 
     /**
@@ -57,7 +69,7 @@ contract MutualAssuranceContract {
     uint256 immutable public END;
 
     /**
-     *
+     * @notice
      */
     address immutable public FACTORY;
 
@@ -72,6 +84,9 @@ contract MutualAssuranceContract {
      */
     IAttestationStation immutable STATION;
 
+    /**
+     * @notice
+     */
     bytes32 constant public TOPIC = bytes32("MutualAssuranceContractV0");
 
     /**
@@ -83,6 +98,11 @@ contract MutualAssuranceContract {
      * @notice
      */
     Contribution[] public contributions;
+
+    /**
+     * @notice Used for reentrency lock
+     */
+    uint256 wall;
 
     /**
      * @notice
@@ -100,6 +120,16 @@ contract MutualAssuranceContract {
         COMMANDER = _commander;
         FACTORY = msg.sender;
         STATION = IAttestationStation(_station);
+        wall = 1;
+    }
+
+    modifier nonreentrant() {
+        if (wall == 0) {
+            revert NonReentrant();
+        }
+        wall = 0;
+        _;
+        wall = 1;
     }
 
     /**
@@ -113,7 +143,7 @@ contract MutualAssuranceContract {
     /**
      * @notice
      */
-    function resolve() external {
+    function resolve() external nonreentrant {
         // ensure it can only be resolved once
         if (resolved) {
             revert AlreadyResolved();

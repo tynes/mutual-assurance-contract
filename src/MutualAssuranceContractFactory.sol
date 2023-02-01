@@ -11,6 +11,11 @@ contract MutualAssuranceContractFactory {
     /**
      * @notice
      */
+    error BadAccount(address);
+
+    /**
+     * @notice
+     */
     IAttestationStation immutable STATION;
 
     /**
@@ -22,10 +27,16 @@ contract MutualAssuranceContractFactory {
         address[] _players
     );
 
+    /**
+     * @notice
+     */
     constructor(address _station) {
         STATION = IAttestationStation(_station);
     }
 
+    /**
+     * @notice
+     */
     function deploy(
         bytes32 _commitment,
         uint256 _duration,
@@ -46,6 +57,12 @@ contract MutualAssuranceContractFactory {
 
         unchecked {
             for (uint256 i; i < length; ++i) {
+                // Prevent the mutual assurace contract from
+                // playing itself.
+                if (_players[i] == address(c)) {
+                    revert BadAccount(_players[i]);
+                }
+
                 a[i] = IAttestationStation.AttestationData({
                     about: _players[i],
                     key: _commitment,
