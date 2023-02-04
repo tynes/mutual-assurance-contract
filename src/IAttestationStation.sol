@@ -8,6 +8,16 @@ interface IAttestationStation {
     /**
      * @notice
      */
+    event AttestationCreated(
+        address indexed creator,
+        address indexed about,
+        bytes32 indexed key,
+        bytes val
+    );
+
+    /**
+     * @notice
+     */
     struct AttestationData {
         address about;
         bytes32 key;

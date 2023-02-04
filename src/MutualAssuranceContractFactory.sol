@@ -16,16 +16,28 @@ contract MutualAssuranceContractFactory {
     /**
      * @notice
      */
-    IAttestationStation immutable STATION;
+    error ContractNonExistent(address, bytes32);
+
+    /**
+     * @notice
+     */
+    error NoPlayers();
+
+    /**
+     * @notice
+     */
+    IAttestationStation public immutable STATION;
 
     /**
      * @notice
      */
     event ContractCreated(
         bytes32 indexed _commitment,
-        address _contract,
+        address indexed _contract,
         address[] _players
     );
+
+    bytes32 constant public TOPIC = bytes32("players");
 
     /**
      * @notice
@@ -43,7 +55,7 @@ contract MutualAssuranceContractFactory {
         uint256 _lump,
         address _commander,
         address[] memory _players
-    ) public {
+    ) public returns (address) {
         MutualAssuranceContract c = new MutualAssuranceContract(
             _commitment,
             _duration,
@@ -53,7 +65,11 @@ contract MutualAssuranceContractFactory {
         );
 
         uint256 length = _players.length;
-        IAttestationStation.AttestationData[] memory a = new IAttestationStation.AttestationData[](length);
+        if (length == 0) {
+            revert NoPlayers();
+        }
+
+        IAttestationStation.AttestationData[] memory a = new IAttestationStation.AttestationData[](length + 1);
 
         unchecked {
             for (uint256 i; i < length; ++i) {
@@ -71,9 +87,49 @@ contract MutualAssuranceContractFactory {
             }
         }
 
+        a[length] = IAttestationStation.AttestationData({
+            about: address(c),
+            key: TOPIC,
+            val: abi.encode(_players)
+        });
+
         STATION.attest(a);
 
         emit ContractCreated(_commitment, address(c), _players);
+
+        return address(c);
+    }
+
+    /**
+     * @notice
+     */
+    function get(
+        address _player,
+        bytes32 _commitment
+    ) public view returns (address) {
+        bytes memory a = STATION.attestations(address(this), _player, _commitment);
+        if (a.length == 0) {
+            revert ContractNonExistent(_player, _commitment);
+        }
+        return abi.decode(a, (address));
+    }
+
+    /**
+     * @notice
+     */
+    function players(address _contract) public view returns (address[] memory) {
+        bytes memory a = STATION.attestations(address(this), _contract, bytes32("players"));
+        if (a.length == 0) {
+            return new address[](0);
+        } else {
+            return abi.decode(a, (address[]));
+        }
+    }
+
+    /**
+     * @notice
+     */
+    function commitment(string memory _c) public pure returns (bytes32) {
+        return keccak256(bytes(_c));
     }
 }
-

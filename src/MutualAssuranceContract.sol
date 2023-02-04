@@ -82,7 +82,7 @@ contract MutualAssuranceContract {
     /**
      * @notice
      */
-    IAttestationStation immutable STATION;
+    IAttestationStation immutable public STATION;
 
     /**
      * @notice
@@ -102,7 +102,7 @@ contract MutualAssuranceContract {
     /**
      * @notice Used for reentrency lock
      */
-    uint256 wall;
+    uint256 internal wall;
 
     /**
      * @notice
@@ -136,8 +136,12 @@ contract MutualAssuranceContract {
      * @notice
      */
     function isAllowed(address who) public view returns (bool) {
-        bytes memory a = STATION.attestations(address(FACTORY), who, COMMITMENT);
+        bytes memory a = STATION.attestations(FACTORY, who, COMMITMENT);
         return a.length != 0;
+    }
+
+    function isResolvable() external view returns (bool) {
+        return address(this).balance >= LUMP && block.timestamp >= END;
     }
 
     /**
@@ -165,7 +169,7 @@ contract MutualAssuranceContract {
             lose();
         }
 
-        STATION.attest(FACTORY, TOPIC, abi.encode(success));
+        STATION.attest(FACTORY, bytes32("MutualAssuranceContractV0_Result"), abi.encode(success));
 
         // it has been resolved
         resolved = true;
@@ -189,24 +193,6 @@ contract MutualAssuranceContract {
         if (success == false) {
             revert PleaseAccept(COMMANDER);
         }
-
-        uint256 length = contributions.length;
-        IAttestationStation.AttestationData[] memory a = new IAttestationStation.AttestationData[](length);
-
-        unchecked {
-            for (uint256 i; i < length; ++i) {
-                Contribution memory c = contributions[i];
-
-                a[i] = IAttestationStation.AttestationData({
-                    about: c.from,
-                    key: TOPIC,
-                    val: abi.encode(c.amount)
-                });
-
-            }
-        }
-
-        STATION.attest(a);
     }
 
     /**
@@ -257,6 +243,9 @@ contract MutualAssuranceContract {
         // it can be refunded if the contract resolves in
         // the losing direction
         contributions.push(Contribution(sender, value));
+
+        // make an attestation
+        STATION.attest(sender, TOPIC, abi.encode(value));
 
         emit Assurance(sender, value);
     }
