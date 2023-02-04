@@ -5,31 +5,34 @@ import { IAttestationStation } from "./IAttestationStation.sol";
 import { MutualAssuranceContract } from "./MutualAssuranceContract.sol";
 
 /**
- * @title
+ * @title  MutualAssuranceContractFactory
+ * @notice A factory contract for entering mutual assurace contracts.
  */
 contract MutualAssuranceContractFactory {
     /**
-     * @notice
+     * @notice Prevent entering mutual assurace contracts with bad accounts.
      */
     error BadAccount(address);
 
     /**
-     * @notice
+     * @notice Error for querying a mutual assurace contract that does not
+     *         exist.
      */
     error ContractNonExistent(address, bytes32);
 
     /**
-     * @notice
+     * @notice There must at least 1 player in the mutual assurace contract.
      */
     error NoPlayers();
 
     /**
-     * @notice
+     * @notice A reference to the AttestationStation.
      */
     IAttestationStation public immutable STATION;
 
     /**
-     * @notice
+     * @notice Emits when a mutual assurace contract is created so its easy to
+     *         track.
      */
     event ContractCreated(
         bytes32 indexed _commitment,
@@ -37,17 +40,29 @@ contract MutualAssuranceContractFactory {
         address[] _players
     );
 
+    /**
+     * @notice The AttestationStation topic used by this contract to make it
+     *         easy to know what players are in a mutual assurace contract.
+     */
     bytes32 constant public TOPIC = bytes32("players");
 
     /**
-     * @notice
+     * @notice Set the AttestationStation in the constructor as an immutable.
      */
     constructor(address _station) {
         STATION = IAttestationStation(_station);
     }
 
     /**
-     * @notice
+     * @notice Create a mutual assurace contract.
+     * @param  _commitment A commitment to the purpose the contract was entered.
+     *                     Can be a bytes32 wrapped string or a hash of a longer
+     *                     string.
+     * @param  _duration   The length of the mutual assurace contract.
+     * @param  _lump       The length of the mutual assurace contract.
+     * @param  _commander  The recipient of the funds of when the mutual
+     *                     assurace contract resolves to a win.
+     * @param  _players    The participants in the mutual assurace contract.
      */
     function deploy(
         bytes32 _commitment,
@@ -56,45 +71,20 @@ contract MutualAssuranceContractFactory {
         address _commander,
         address[] memory _players
     ) public returns (address) {
+        if (_players.length == 0) {
+            revert NoPlayers();
+        }
+
         MutualAssuranceContract c = new MutualAssuranceContract(
             _commitment,
             _duration,
             _lump,
             _commander,
-            address(STATION)
+            address(STATION),
+            _players
         );
 
-        uint256 length = _players.length;
-        if (length == 0) {
-            revert NoPlayers();
-        }
-
-        IAttestationStation.AttestationData[] memory a = new IAttestationStation.AttestationData[](length + 1);
-
-        unchecked {
-            for (uint256 i; i < length; ++i) {
-                // Prevent the mutual assurace contract from
-                // playing itself.
-                if (_players[i] == address(c)) {
-                    revert BadAccount(_players[i]);
-                }
-
-                a[i] = IAttestationStation.AttestationData({
-                    about: _players[i],
-                    key: _commitment,
-                    val: abi.encode(address(c))
-                });
-            }
-        }
-
-        a[length] = IAttestationStation.AttestationData({
-            about: address(c),
-            key: TOPIC,
-            val: abi.encode(_players)
-        });
-
-        STATION.attest(a);
-
+        STATION.attest(address(c), TOPIC, abi.encode(_players));
         emit ContractCreated(_commitment, address(c), _players);
 
         return address(c);
@@ -103,22 +93,8 @@ contract MutualAssuranceContractFactory {
     /**
      * @notice
      */
-    function get(
-        address _player,
-        bytes32 _commitment
-    ) public view returns (address) {
-        bytes memory a = STATION.attestations(address(this), _player, _commitment);
-        if (a.length == 0) {
-            revert ContractNonExistent(_player, _commitment);
-        }
-        return abi.decode(a, (address));
-    }
-
-    /**
-     * @notice
-     */
     function players(address _contract) public view returns (address[] memory) {
-        bytes memory a = STATION.attestations(address(this), _contract, bytes32("players"));
+        bytes memory a = STATION.attestations(address(this), _contract, TOPIC);
         if (a.length == 0) {
             return new address[](0);
         } else {
