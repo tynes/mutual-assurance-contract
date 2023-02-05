@@ -2,11 +2,12 @@
 pragma solidity ^0.8.0;
 
 /**
- * @title
+ * @title  Interface for the AttestationStation
+ * @author Optimism Collective
  */
 interface IAttestationStation {
     /**
-     * @notice
+     * @notice Emits when an attestation is created
      */
     event AttestationCreated(
         address indexed creator,
@@ -16,7 +17,7 @@ interface IAttestationStation {
     );
 
     /**
-     * @notice
+     * @notice The structure of an attestation
      */
     struct AttestationData {
         address about;
@@ -25,17 +26,17 @@ interface IAttestationStation {
     }
 
     /**
-     * @notice
+     * @notice Fetch attestation data
      */
     function attestations(address, address, bytes32) external view returns (bytes memory);
 
     /**
-     * @notice
+     * @notice Create multiple attestations with a single call
      */
     function attest(AttestationData[] memory _attestations) external;
 
     /**
-     * @notice
+     * @notice Create a single attestation
      */
     function attest(address _about, bytes32 _key, bytes memory val) external;
 }

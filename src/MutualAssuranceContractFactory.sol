@@ -6,6 +6,8 @@ import { MutualAssuranceContract } from "./MutualAssuranceContract.sol";
 
 /**
  * @title  MutualAssuranceContractFactory
+ * @author tynes
+ * @author Optimism Collective
  * @notice A factory contract for entering mutual assurace contracts.
  */
 contract MutualAssuranceContractFactory {

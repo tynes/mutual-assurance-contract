@@ -6,6 +6,8 @@ import { SafeCall } from "./SafeCall.sol";
 
 /**
  * @title  MutualAssuranceContract
+ * @author tynes
+ * @author Optimism Collective
  * @notice Enter into a mutual assurance contract with a set of players.
  *         Players can send ether to this contract and if enough ether is
  *         accumulated into the contract by the timeout, then the contract
