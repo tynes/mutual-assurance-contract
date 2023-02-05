@@ -12,7 +12,7 @@ import { stdJson } from "forge-std/StdJson.sol";
 * @title  MutualAssuranceContractScript
 * @notice Deploy an instance of a mutual assurance contract
 */
-contract MutualAssuranceContractScript is Script, Test {
+contract DeployContract is Script, Test {
     address factory;
 
     // Parsed config
@@ -39,6 +39,10 @@ contract MutualAssuranceContractScript is Script, Test {
         console.log("Using factory:", factory);
     }
 
+    /**
+     * @notice Parse the config file. Return abi encoded bytes to be able
+     *         to access the data from running `forge script`
+     */
     function _parseArgs(string memory input) public returns (bytes memory) {
         string memory config = _readJson(input);
         string memory _commitment = stdJson.readString(config, "commitment");
@@ -66,7 +70,7 @@ contract MutualAssuranceContractScript is Script, Test {
      *         the instance of the mutual assurance contract. Pass in the name
      *         of the file containing the config without the `.json` suffix.
      */
-    function run(string memory input) public {
+    function run(string memory input) public returns (address) {
         _parseArgs(input);
 
         console.log("commitment:", vm.toString(commitment));
@@ -78,6 +82,7 @@ contract MutualAssuranceContractScript is Script, Test {
             console.log(" ", players[i]);
         }
 
+        vm.broadcast();
         address mas = MutualAssuranceContractFactory(factory).deploy({
             _commitment: commitment,
             _duration: duration,
@@ -87,5 +92,7 @@ contract MutualAssuranceContractScript is Script, Test {
         });
 
         console.log("Mutual Assurance Contract Address:", mas);
+
+        return mas;
     }
 }
