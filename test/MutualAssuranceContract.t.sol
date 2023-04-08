@@ -2,15 +2,10 @@
 pragma solidity 0.8.17;
 
 import { Test } from "forge-std/Test.sol";
-import { Vm } from "forge-std/Vm.sol";
-import { console } from "forge-std/console.sol";
 import { GnosisSafeProxyFactory } from "safe-contracts/proxies/GnosisSafeProxyFactory.sol";
 import { GnosisSafe } from "safe-contracts/GnosisSafe.sol";
 import { MutualAssuranceContractFactoryV1 } from "../src/MutualAssuranceContractFactoryV1.sol";
 import { MutualAssuranceContractV1 } from "../src/MutualAssuranceContractV1.sol";
-
-// TODO: figure out cast commands to deploy gnosis safe txs
-// until then, do fork tests
 
 /// @notice Test the mutual assurance contract
 contract MutualAssuranceContractTest is Test {
@@ -27,7 +22,7 @@ contract MutualAssuranceContractTest is Test {
 
     MutualAssuranceContractFactoryV1 internal factory;
 
-    /// @notice
+    /// @notice Set up the test env
     function setUp() external {
         factory = new MutualAssuranceContractFactoryV1({
             _safeFactory: safeFactory,
@@ -48,7 +43,7 @@ contract MutualAssuranceContractTest is Test {
         _setupSafe();
     }
 
-    /// @notice
+    /// @notice Sets the GnosisSafe related code at the correct addresses.
     function _setupSafe() internal skipWhenForking {
         vm.etch(address(safeFactory), vm.getDeployedCode("GnosisSafeProxyFactory.sol"));
         vm.etch(address(safeSingleton), vm.getDeployedCode("GnosisSafe.sol"));
@@ -64,7 +59,7 @@ contract MutualAssuranceContractTest is Test {
         return _deploy(_guardians);
     }
 
-    /// @notice
+    /// @notice Deploy a MutualAssuranceContractV1 with configurable guardians.
     function _deploy(address[] memory _guardians) internal returns (MutualAssuranceContractV1) {
         MutualAssuranceContractV1 pact = factory.create({
             _commitment: bytes32(uint256(0x20)),
@@ -123,7 +118,7 @@ contract MutualAssuranceContractTest is Test {
         assertEq(address(pact.safe()), address(0));
     }
 
-    /// @notice
+    /// @notice Creation reverts when no value is configured to be able to win.
     function test_factory_createNoLumpReverts() external {
         address[] memory _guardians = new address[](1);
         _guardians[0] = alice;
@@ -137,7 +132,7 @@ contract MutualAssuranceContractTest is Test {
         });
     }
 
-    /// @notice
+    /// @notice Creation reverts when no guardians are configured.
     function test_factory_createNoGuardiansReverts() external {
         address[] memory _guardians = new address[](0);
 
@@ -150,7 +145,7 @@ contract MutualAssuranceContractTest is Test {
         });
     }
 
-    /// @notice
+    /// @notice Any user can contribute.
     function test_pact_contribute() external {
         MutualAssuranceContractV1 pact = _deploy();
 
