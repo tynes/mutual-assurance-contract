@@ -2,231 +2,255 @@
 pragma solidity 0.8.17;
 
 import { Test } from "forge-std/Test.sol";
-import { Vm } from "forge-std/Vm.sol";
-import { console } from "forge-std/console.sol";
-import { MutualAssuranceContractFactory } from "../src/MutualAssuranceContractFactory.sol";
-import { MutualAssuranceContract } from "../src/MutualAssuranceContract.sol";
-import { IAttestationStation } from "../src/IAttestationStation.sol";
+import { GnosisSafeProxyFactory } from "safe-contracts/proxies/GnosisSafeProxyFactory.sol";
+import { GnosisSafe } from "safe-contracts/GnosisSafe.sol";
+import { MutualAssuranceContractFactoryV1 } from "../src/MutualAssuranceContractFactoryV1.sol";
+import { MutualAssuranceContractV1 } from "../src/MutualAssuranceContractV1.sol";
 
-/**
- * @notice Test the mutual assurance contract
- */
+/// @notice Test the mutual assurance contract
 contract MutualAssuranceContractTest is Test {
     event Assurance(address who, uint256 value);
-    event Resolved(bool);
+    event Resolve(bool);
 
-    IAttestationStation constant station = IAttestationStation(0xEE36eaaD94d1Cc1d0eccaDb55C38bFfB6Be06C77);
-    MutualAssuranceContractFactory public factory;
+    // both accounts are from mainnet
+    GnosisSafeProxyFactory constant safeFactory = GnosisSafeProxyFactory(0xa6B71E26C5e0845f74c812102Ca7114b6a896AB2);
+    GnosisSafe constant safeSingleton = GnosisSafe(payable(0xd9Db270c1B5E3Bd161E8c8503c55cEABeE709552));
 
-    address alice;
-    address bob;
+    address internal alice;
+    address internal bob;
+    address internal charlie;
 
-    bytes32 internal constant ContractCreatedTopic = keccak256("ContractCreated(bytes32,address,address[])");
-    bytes32 internal constant AttestationCreatedTopic = keccak256("AttestationCreated(address,address,bytes32,bytes)");
+    MutualAssuranceContractFactoryV1 internal factory;
 
+    /// @notice Set up the test env
     function setUp() external {
-        factory = new MutualAssuranceContractFactory(address(station));
-        vm.label(address(station), "AttestationStation");
+        factory = new MutualAssuranceContractFactoryV1({
+            _safeFactory: safeFactory,
+            _safeSingleton: safeSingleton
+        });
+
+        vm.label(address(safeFactory), "GnosisSafeProxyFactory");
+        vm.label(address(safeSingleton), "GnosisSafe");
 
         alice = makeAddr("alice");
         bob = makeAddr("bob");
+        charlie = makeAddr("charlie");
+
         deal(alice, 100 ether);
         deal(bob, 100 ether);
+        deal(charlie, 100 ether);
+
+        _setupSafe();
     }
 
-    /**
-     * @notice The AttestationStation contract should be set in the
-     *         constructor and be accessible via a getter
-     */
-    function test_constructor() external {
-        assertEq(
-            address(factory.STATION()),
-            address(station)
-        );
+    /// @notice Sets the GnosisSafe related code at the correct addresses.
+    function _setupSafe() internal skipWhenForking {
+        vm.etch(address(safeFactory), vm.getDeployedCode("GnosisSafeProxyFactory.sol"));
+        vm.etch(address(safeSingleton), vm.getDeployedCode("GnosisSafe.sol"));
     }
 
-    /**
-     * @notice Wrap the factory deploy
-     */
-    function _deploy() internal returns (address) {
-        address[] memory players = new address[](2);
-        players[0] = alice;
-        players[1] = bob;
+    /// @notice Deploys a standard MutualAssuranceContract for testing. Alice and Bob
+    ///         are guardians and Charlie is not.
+    function _deploy() internal returns (MutualAssuranceContractV1) {
+        address[] memory _guardians = new address[](2);
+        _guardians[0] = alice;
+        _guardians[1] = bob;
 
-        return _deploy(players);
+        return _deploy(_guardians);
     }
 
-    /**
-     * @notice Wrap the factory deploy
-     */
-    function _deploy(
-        bytes32 _commitment,
-        uint256 _duration,
-        uint256 _lump,
-        address _commander,
-        address[] memory _players
-    ) internal returns (address) {
-        return factory.deploy(
-            _commitment,
-            _duration,
-            _lump,
-            _commander,
-            _players
-        );
+    /// @notice Deploy a MutualAssuranceContractV1 with configurable guardians.
+    function _deploy(address[] memory _guardians) internal returns (MutualAssuranceContractV1) {
+        MutualAssuranceContractV1 pact = factory.create({
+            _commitment: bytes32(uint256(0x20)),
+            _duration: 12 * 500,
+            _lump: 1 ether,
+            _guardians: _guardians
+        });
+
+        vm.label(address(pact), "pact");
+        return pact;
     }
 
-    /**
-     * @notice Wrap the factory deploy
-     */
-    function _deploy(address[] memory _players) internal returns (address) {
-        bytes32 commitment = keccak256("foo");
-        uint256 duration = 100;
-        uint256 lump = 250;
-        address commander = address(0xdd);
+    /// @notice Ensures that the constructor initializes the factory correctly
+    function test_factory_constructor() external {
+        address _safeFactory = address(factory.safeFactory());
+        assertEq(_safeFactory, address(safeFactory));
+        assertTrue(_safeFactory.code.length > 0);
 
-        return factory.deploy(
-            commitment,
-            duration,
-            lump,
-            commander,
-            _players
-        );
+        address _safeSingleton = address(factory.safeSingleton());
+        assertEq(_safeSingleton, address(safeSingleton));
+        assertTrue(_safeSingleton.code.length > 0);
+
+        address implementation = address(factory.implementation());
+        assertTrue(implementation != address(0));
+        assertTrue(implementation.code.length != 0);
     }
 
-    /**
-     * @notice The initial setup of attestations.
-     */
-    function test_initial_attestors() external {
-        // record the logs of the deployment
-        vm.recordLogs();
-        address c = _deploy();
-        Vm.Log[] memory entries = vm.getRecordedLogs();
+    /// @notice Ensures that a factory can be created with sane config
+    function test_factory_create() external {
+        address[] memory _guardians = new address[](1);
+        _guardians[0] = alice;
 
-        // instance of the mutual assurance contract
-        MutualAssuranceContract m = MutualAssuranceContract(payable(c));
+        bytes32 commitment = keccak256(abi.encode(block.timestamp));
+        uint256 duration = 1e6;
+        uint256 lump = 30 ether;
 
-        assertEq(m.FACTORY(), address(factory), "Factory address mismatch");
-        assertEq(address(m.STATION()), address(station), "Station address mismatch");
+        MutualAssuranceContractV1 pact = factory.create({
+            _commitment: commitment,
+            _duration: duration,
+            _lump: lump,
+            _guardians: _guardians
+        });
 
-        // grab the ContractCreated event, there is only 1 of them
-        address[] memory players;
-        bytes32 commitment;
-        address assuraceContract;
-        for (uint256 i; i < entries.length; i++) {
-            if (entries[i].topics[0] == ContractCreatedTopic) {
-                commitment = entries[i].topics[1];
-                assuraceContract = address(uint160(uint256(entries[i].topics[2])));
-                players = abi.decode(entries[i].data, (address[]));
-            }
-        }
+        vm.label(address(pact), "pact");
 
-        assertTrue(players.length > 0, "No players found");
-        assertTrue(commitment != bytes32(0), "No commitment found");
-        assertTrue(assuraceContract != address(0), "No contract found");
-        assertEq(c, assuraceContract, "Contract address mismatch");
+        assertEq(address(pact.safeFactory()), address(safeFactory));
+        assertEq(address(pact.safeSingleton()), address(safeSingleton));
 
-        // ensure that the attestations are set up properly
-        for (uint256 i; i < players.length; i++) {
-            bytes memory a = station.attestations(c, players[i], bytes32("player"));
-            assertTrue(a.length != 0, "No attestation found");
-            assertEq(hex"01", a, "Unexpected data in attestation");
-        }
+        assertEq(pact.resolved(), false);
+        assertEq(pact.start(), block.timestamp);
 
-        // ensure that the players are allowed
-        for (uint256 i; i < players.length; i++) {
-            assertTrue(m.isAllowed(players[i]), "Player not allowed");
-        }
-
-        address[] memory factoryPlayers = factory.players(assuraceContract);
-        assertEq(factoryPlayers.length, players.length);
-
-        for (uint256 i; i < factoryPlayers.length; i++) {
-            assertEq(factoryPlayers[i], players[i], "Fetched players incorrect");
-        }
+        assertEq(pact.duration(), duration);
+        assertEq(pact.lump(), lump);
+        assertEq(pact.commitment(), commitment);
+        assertEq(pact.guardians(), _guardians);
+        assertEq(address(pact.safe()), address(0));
     }
 
-    /**
-     * @notice Test a winning resolution
-     */
-    function test_resolve_win() external {
-        address c = _deploy();
-        MutualAssuranceContract m = MutualAssuranceContract(payable(c));
+    /// @notice Creation reverts when no value is configured to be able to win.
+    function test_factory_createNoLumpReverts() external {
+        address[] memory _guardians = new address[](1);
+        _guardians[0] = alice;
 
-        uint256 lump = m.LUMP();
+        vm.expectRevert(abi.encodeWithSelector(MutualAssuranceContractFactoryV1.Empty.selector));
+        factory.create({
+            _commitment: bytes32(uint256(1)),
+            _duration: 0,
+            _lump: 0,
+            _guardians: _guardians
+        });
+    }
 
-        vm.expectEmit(true, true, true, true, c);
-        emit Assurance(alice, lump);
+    /// @notice Creation reverts when no guardians are configured.
+    function test_factory_createNoGuardiansReverts() external {
+        address[] memory _guardians = new address[](0);
+
+        vm.expectRevert(abi.encodeWithSelector(MutualAssuranceContractFactoryV1.Empty.selector));
+        factory.create({
+            _commitment: bytes32(uint256(1)),
+            _duration: 0,
+            _lump: 1 ether,
+            _guardians: _guardians
+        });
+    }
+
+    /// @notice Any user can contribute.
+    function test_pact_contribute() external {
+        MutualAssuranceContractV1 pact = _deploy();
+
+        uint256 value = 1 ether;
+
+        vm.expectEmit(true, true, true, true, address(pact));
+        emit Assurance(alice, value);
 
         vm.prank(alice);
-        (bool success, ) = c.call{ value: lump }(hex"");
+        (bool success, ) = address(pact).call{ value: value }(hex"");
         assertTrue(success);
 
-        vm.warp(m.END());
-        assertEq(m.isResolvable(), true);
+        assertEq(address(pact).balance, value);
 
-        uint256 prebalance = c.balance;
+        MutualAssuranceContractV1.Contribution[] memory contribs = pact.contributions();
+        assertEq(contribs.length, 1);
 
-        vm.expectEmit(true, true, true, true, c);
-        emit Resolved(true);
+        MutualAssuranceContractV1.Contribution memory contrib = contribs[0];
+        assertEq(contrib.from, alice);
+        assertEq(contrib.amount, value);
 
-        vm.expectCall(
-            m.COMMANDER(),
-            prebalance,
-            hex""
-        );
-        m.resolve();
-
-        assertEq(m.COMMANDER().balance, prebalance);
+        MutualAssuranceContractV1.Contribution memory contribution = pact.contribution(0);
+        assertEq(contribution.from, alice);
+        assertEq(contribution.amount, value);
     }
 
-    /**
-     * @notice Test contributing more than once and updating the attestation
-     *         value
-     */
-    function test_contribute_twice() external {
-        address c = _deploy();
-        MutualAssuranceContract m = MutualAssuranceContract(payable(c));
+    /// @notice Ensures that all the side effects of winning a pact are correct.
+    function test_pact_win() external {
+        address[] memory guardians = new address[](1);
+        guardians[0] = alice;
+
+        MutualAssuranceContractV1 pact = _deploy(guardians);
+
+        // Add enough value
+        uint256 value = pact.lump();
+
+        vm.expectEmit(true, true, true, true, address(pact));
+        emit Assurance(alice, value);
 
         vm.prank(alice);
-        (bool s1, ) = c.call{ value: 10 }(hex"");
-        assertTrue(s1);
+        (bool success, ) = address(pact).call{ value: value }(hex"");
+        assertTrue(success);
+        // The pact should have enough value
+        assertEq(address(pact).balance, value);
 
-        vm.prank(alice);
-        (bool s2, ) = c.call{ value: 10 }(hex"");
-        assertTrue(s2);
+        // Move time to the end
+        uint256 end = pact.end();
+        vm.warp(end);
 
-        bytes memory a = station.attestations(c, alice, m.TOPIC());
-        uint256 total = abi.decode(a, (uint256));
-        assertEq(total, 20);
+        // It should be resolvable and successful
+        assertTrue(pact.resolvable());
+        assertTrue(pact.successful());
+
+        vm.expectEmit(true, true, true, true, address(pact));
+        emit Resolve(true);
+
+        vm.prank(bob);
+        pact.resolve();
+
+        assertTrue(pact.resolved());
+
+        assertEq(address(pact).balance, 0);
+
+        GnosisSafe safe = pact.safe();
+        assertTrue(address(safe).code.length > 0);
+
+        address[] memory owners = safe.getOwners();
+        assertEq(guardians, owners);
+        assertEq(safe.getThreshold(), owners.length);
+        assertEq(address(safe).balance, value);
     }
 
-    /**
-     * @notice Test a failed resolution
-     */
-    function test_resolve_lose() external {
-        address c = _deploy();
-        MutualAssuranceContract m = MutualAssuranceContract(payable(c));
+    /// @notice Test a failed resolution
+    function test_pact_lose() external {
+        address[] memory guardians = new address[](1);
+        guardians[0] = alice;
 
-        uint256 prebalance = alice.balance;
+        MutualAssuranceContractV1 pact = _deploy(guardians);
 
-        uint256 lump = m.LUMP();
+        uint256 alicePreBalance = alice.balance;
+
+        uint256 value = pact.lump() - 1;
+
+        vm.expectEmit(true, true, true, true, address(pact));
+        emit Assurance(alice, value);
+
         vm.prank(alice);
-        (bool success, ) = c.call{ value: lump - 1 }(hex"");
+        (bool success, ) = address(pact).call{ value: value }(hex"");
         assertTrue(success);
 
-        bytes memory a = station.attestations(c, alice, m.TOPIC());
-        uint256 total = abi.decode(a, (uint256));
-        assertEq(total, lump - 1);
+        uint256 end = pact.end();
+        vm.warp(end);
 
-        vm.warp(m.END());
-        assertEq(m.isResolvable(), true);
+        assertTrue(pact.resolvable());
+        assertFalse(pact.successful());
 
-        vm.expectEmit(true, true, true, true, c);
-        emit Resolved(false);
+        vm.expectEmit(true, true, true, true, address(pact));
+        emit Resolve(false);
 
-        vm.expectCall(alice, lump - 1, hex"");
-        m.resolve();
+        vm.expectCall(alice, value, hex"");
 
-        assertEq(alice.balance, prebalance);
+        vm.prank(bob);
+        pact.resolve();
+
+        uint256 alicePostBalance = alice.balance;
+        assertEq(alicePostBalance, alicePreBalance);
     }
 }

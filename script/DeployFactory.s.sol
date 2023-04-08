@@ -1,30 +1,86 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.13;
+pragma solidity 0.8.17;
 
 import { Script } from "forge-std/Script.sol";
-import { Test } from "forge-std/Test.sol";
-import { MutualAssuranceContractFactory } from "../src/MutualAssuranceContractFactory.sol";
 import { console } from "forge-std/console.sol";
-import { stdJson } from "forge-std/StdJson.sol";
+import { GnosisSafeProxyFactory } from "safe-contracts/proxies/GnosisSafeProxyFactory.sol";
+import { GnosisSafe } from "safe-contracts/GnosisSafe.sol";
+import { MutualAssuranceContractFactoryV1 } from "../src/MutualAssuranceContractFactoryV1.sol";
 
-contract MutualAssuranceFactoryScript is Script, Test {
-    address constant station = 0xEE36eaaD94d1Cc1d0eccaDb55C38bFfB6Be06C77;
+/// @notice
+contract DeployFactory is Script {
+    /// @notice
+    bytes32 constant internal salt = bytes32(uint256(0x01));
 
-    function outfile() internal view returns (string memory) {
-        string memory inputDir = string.concat(vm.projectRoot(), "/script/input/");
-        string memory chainDir = string.concat(vm.toString(block.chainid), "/");
-        return string.concat(inputDir, chainDir, "config.json");
+    /// @notice
+    error UnknownChain(uint256);
+
+    /// @notice
+    error NoCode(string, address);
+
+    /// @notice
+    struct SafeAddresses {
+        GnosisSafeProxyFactory factory;
+        GnosisSafe singleton;
     }
 
-    function run() public {
+    /// @notice
+    function run() public returns (address) {
+        SafeAddresses memory addrs = getSafeAddresses();
+        return _run(addrs.factory, addrs.singleton);
+    }
+
+    /// @notice
+    function run(GnosisSafeProxyFactory _safeFactory, GnosisSafe _safeSingleton) public returns (address) {
+        return _run(_safeFactory, _safeSingleton);
+    }
+
+    /// @notice
+    function _run(GnosisSafeProxyFactory _safeFactory, GnosisSafe _safeSingleton) internal returns (address) {
+        if (address(_safeFactory).code.length == 0) revert NoCode("GnosisSafeProxyFactory", address(_safeFactory));
+        if (address(_safeSingleton).code.length == 0) revert NoCode("GnosisSafe", address(_safeSingleton));
+
         vm.broadcast();
-        MutualAssuranceContractFactory factory = new MutualAssuranceContractFactory{ salt: bytes32(uint256(0x01)) }(station);
-        console.log("factory address:", address(factory));
+        MutualAssuranceContractFactoryV1 factory = new MutualAssuranceContractFactoryV1{ salt: salt }({
+            _safeFactory: _safeFactory,
+            _safeSingleton: _safeSingleton
+        });
 
-        assertEq(address(factory.STATION()), station);
+        address addr = address(factory);
+        console.log("factory address:", addr);
+        return addr;
+    }
 
-        string memory json = "";
-        json = stdJson.serialize(json, "factory", address(factory));
-        stdJson.write(json, outfile());
+    /// @notice
+    function getSafeAddresses() internal returns (SafeAddresses memory) {
+        uint256 chainid = block.chainid;
+        address factory;
+        address singleton;
+
+        if (chainid == 1) {
+            factory = 0xa6B71E26C5e0845f74c812102Ca7114b6a896AB2;
+            singleton = 0xd9Db270c1B5E3Bd161E8c8503c55cEABeE709552;
+        } else if (chainid == 5) {
+            factory = 0xa6B71E26C5e0845f74c812102Ca7114b6a896AB2;
+            singleton = 0xd9Db270c1B5E3Bd161E8c8503c55cEABeE709552;
+        } else if (chainid == 10) {
+            factory = 0xC22834581EbC8527d974F8a1c97E1bEA4EF910BC;
+            singleton = 0x69f4D1788e39c87893C980c06EdF4b7f686e2938;
+        } else if (chainid == 420) {
+            factory = 0xC22834581EbC8527d974F8a1c97E1bEA4EF910BC;
+            singleton = 0x69f4D1788e39c87893C980c06EdF4b7f686e2938;
+        } else if (chainid == 31337) {
+            factory = 0xa6B71E26C5e0845f74c812102Ca7114b6a896AB2;
+            singleton = 0xd9Db270c1B5E3Bd161E8c8503c55cEABeE709552;
+            vm.etch(factory, vm.getDeployedCode("GnosisSafeProxyFactory.sol"));
+            vm.etch(singleton, vm.getDeployedCode("GnosisSafe.sol"));
+        } else {
+            revert UnknownChain(chainid);
+        }
+
+        return SafeAddresses({
+            factory: GnosisSafeProxyFactory(factory),
+            singleton: GnosisSafe(payable(singleton))
+        });
     }
 }
