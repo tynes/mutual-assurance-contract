@@ -9,14 +9,7 @@ remappings = [
 
 bytecode_hash = 'none'
 
-# why can't we use globs here?
 fs_permissions = [
-  { 'access'='read-write', 'path'='script/input/31337/config.json' },
-  { 'access'='read-write', 'path'='script/input/31337/test.json' },
-  { 'access'='read-write', 'path'='script/input/10/config.json' },
-  { 'access'='read-write', 'path'='script/input/10/test.json' },
-  { 'access'='read-write', 'path'='script/input/5/config.json' },
-  { 'access'='read-write', 'path'='script/input/5/test.json' },
-  { 'access'='read-write', 'path'='script/input/420/config.json' },
-  { 'access'='read-write', 'path'='script/input/420/test.json' }
+  { 'access'='read', 'path'='out/GnosisSafeProxyFactory.sol/GnosisSafeProxyFactory.json' },
+  { 'access'='read', 'path'='out/GnosisSafe.sol/GnosisSafe.json' },
 ]
