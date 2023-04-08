@@ -13,10 +13,13 @@ contract DeployContract is Script {
     /// @notice Errors if a constant needs to be updated.
     error UpdateConstant(string);
 
+    // TODO: figure out why the addy is different
+
     /// @notice Deterministic deployment address of the MutualAssuranceContractFactoryV1.
     ///         This needs to be updated if there is a diff to the bytecode or the create2
     ///         salt changes.
-    address internal constant factory = 0xa3Cf8359e9905c43Ac76CBE006D3a9FB9d01b80A;
+    //address internal constant factory = 0xa3Cf8359e9905c43Ac76CBE006D3a9FB9d01b80A;
+    address internal constant factory = 0x363a186CaEAb9388fE2c80357D6ceB97B0C3b5C8;
 
     /// @notice Deploys the factory if necessary.
     function setUp() public {
@@ -27,7 +30,7 @@ contract DeployContract is Script {
         }
     }
 
-    /// @notice
+    /// @notice Top level deployment function for creating new mutual assurance contracts.
     function run(bytes memory _input) public returns (address) {
         (
             bytes32 commitment,

@@ -7,5 +7,6 @@ out/
 /broadcast/*/31337/
 /broadcast/**/dry-run/
 
-# Dotenv file
+# Env vars
 .env
+.envrc
