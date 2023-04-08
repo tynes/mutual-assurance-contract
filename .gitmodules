@@ -10,7 +10,3 @@
 	path = lib/safe-contracts
 	url = https://github.com/safe-global/safe-contracts
 	branch = v1.3.0
-[submodule "lib/solady"]
-	path = lib/solady
-	url = https://github.com/Vectorized/solady
-	branch = v0.0.86
