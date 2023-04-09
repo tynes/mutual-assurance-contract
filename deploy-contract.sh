@@ -21,16 +21,16 @@ if [ ! -f $CONFIG_PATH ]; then
     exit 1
 fi
 
-COMMITMENT=$(jq -r .commitment < "$CONFIG_PATH")
+COMMITMENT=$(jq -r .commitment < "$CONFIG_PATH" | cast keccak)
 DURATION=$(jq -r .duration < "$CONFIG_PATH")
-LUMP=$(jq -r .lump < "$CONFIG_PATH")
-GUARDIANS=$(jq -r '.guardians' < "$CONFIG_PATH" | tr -d '"' | tr -d '[:space:]')
+SUM=$(jq -r .sum < "$CONFIG_PATH")
+GUARDIANS=$(jq -r '.leads' < "$CONFIG_PATH" | tr -d '"' | tr -d '[:space:]')
 
 DATA=$(cast abi-encode \
     'f(bytes32,uint256,uint256,address[])' \
     $COMMITMENT \
     $DURATION \
-    $LUMP \
+    $SUM \
     $GUARDIANS)
 
 forge script script/DeployContract.s.sol \

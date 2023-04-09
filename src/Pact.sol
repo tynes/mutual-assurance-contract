@@ -18,7 +18,7 @@ import { SafeCall } from "./SafeCall.sol";
 ///         It is expected that the pre-agreed upon commitment is observed. The rule of law
 ///         dictates meatspace.
 contract Pact is Clone {
-    string constant public version = "0.1.0";
+    string constant public version = "0.2.0";
 
     /// @notice Used to determine if the pact has been initialized.
     bool internal _initialized;
@@ -39,7 +39,7 @@ contract Pact is Clone {
 
     /// @notice The set of accounts that own the GnosisSafe that is created after a winning
     //          resolution.
-    address[] internal _guardians;
+    address[] internal _leads;
 
     /// @notice The set of contributions. It is permissionless to contribute.
     Contribution[] internal _contributions;
@@ -82,6 +82,8 @@ contract Pact is Clone {
     constructor(GnosisSafeProxyFactory _safeFactory, GnosisSafe _safeSingleton) {
         safeFactory = _safeFactory;
         safeSingleton = _safeSingleton;
+        // No money can be sent to the singleton.
+        resolved = true;
     }
 
     /// @notice Send ether directly to this contract to contribute. All contributions are tracked
@@ -108,7 +110,7 @@ contract Pact is Clone {
     }
 
     /// @notice The amount of wei required to make the Pact resolve to winning.
-    function lump() public pure returns (uint256) {
+    function sum() public pure returns (uint256) {
         return _getArgUint256(64);
     }
 
@@ -122,13 +124,13 @@ contract Pact is Clone {
         return keccak256(bytes(_agreement)) == commitment();
     }
 
-    /// @notice The set of guardians will own the GnosisSafe that is created after
+    /// @notice The set of leads will own the GnosisSafe that is created after
     ///         a winning resolution. All funds are transferred to this GnosisSafe.
-    function guardians() public view returns (address[] memory) {
-        uint256 length = _guardians.length;
+    function leads() public view returns (address[] memory) {
+        uint256 length = _leads.length;
         address[] memory gs = new address[](length);
         for (uint256 i; i < length;) {
-            gs[i] = _guardians[i];
+            gs[i] = _leads[i];
             unchecked { ++i; }
         }
         return gs;
@@ -162,7 +164,7 @@ contract Pact is Clone {
 
         uint256 length = _gs.length;
         for (uint256 i; i < length;) {
-            _guardians.push(_gs[i]);
+            _leads.push(_gs[i]);
             unchecked { ++i; }
         }
     }
@@ -182,14 +184,14 @@ contract Pact is Clone {
     }
 
     /// @notice Determine if the contract will resolve to winning. The balance must be larger than
-    //          or equal to the lump.
+    //          or equal to the sum.
     function continuing() public view returns (bool) {
-        return address(this).balance >= lump();
+        return address(this).balance >= sum();
     }
 
     /// @notice Call this to resolve the contract. It will be no longer possible to contribute funds
     ///         and the contract will either resolve to winning or losing. When the contract
-    //          resolves to winning, it will create a GnosisSafe with the guardians set as the
+    //          resolves to winning, it will create a GnosisSafe with the leads set as the
     //          owners and then transfer all funds to that contract. When the contract resolves to
     //          losing, it will return the money to each contributor. To resolve to winning, the
     //          contract must have enough value in it.
@@ -249,7 +251,7 @@ contract Pact is Clone {
     /// @notice Encodes GnosisSafe `setup` calldata. Used to initialize the newly deployed
     ///         GnosisSafe.
     function _safeInitializer() internal view returns (bytes memory) {
-        address[] memory gs = guardians();
+        address[] memory gs = leads();
         return abi.encodeCall(
             GnosisSafe.setup,
             (
