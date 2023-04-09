@@ -8,9 +8,12 @@ import { GnosisSafe } from "safe-contracts/GnosisSafe.sol";
 
 /// @title PactFactory
 /// @author tynes
-/// @notice A factory used create Pact contracts.
+/// @notice A factory used create Pacts.
 contract PactFactory {
     using ClonesWithImmutableArgs for address;
+
+    /// @notice The version of the factory.
+    string constant public version = "0.1.0";
 
     /// @notice A reference to the implementation of the Pact. This is the code
     //          that users will interact with when they create a new instance of a
@@ -62,5 +65,13 @@ contract PactFactory {
 
         emit Create(address(instance));
         return instance;
+    }
+
+    /// @notice Create a pact commitment. Commit to an agreement, terms of
+    ///         service or a constitution. Use this value as the `commitment`
+    ///         when creating a Pact.
+    /// @return A commitment to the purpose of the pact.
+    function commit(string memory _agreement) external pure returns (bytes32) {
+        return keccak256(bytes(_agreement));
     }
 }

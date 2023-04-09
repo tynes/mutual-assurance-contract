@@ -9,7 +9,9 @@ import { SafeCall } from "./SafeCall.sol";
 
 /// @title Pact
 /// @author tynes
-/// @notice A mutual assurance contract is a mechanism meant to lower the cost of cooperation.
+/// @notice A mutual assurance contract is a mechanism meant to lower the cost of coordination.
+///         A pre-agreed upon outcome
+
 ///         Participants can put money into a mutual assurance contract as a credible commitment.
 ///         The more money that accumulates into the contract, the lower the activation energy for
 ///         additional participants to put money into the contract. If enough value is placed into
@@ -18,6 +20,8 @@ import { SafeCall } from "./SafeCall.sol";
 ///         to the GnosisSafe, where it can be managed by the guardians. If not enough value
 ///         accumulates, then the value will be sent back to the contributors.
 contract Pact is Clone {
+    string constant public version = "0.1.0";
+
     /// @notice Used to determine if the Pact has been initialized.
     bool internal _initialized;
 
@@ -115,6 +119,11 @@ contract Pact is Clone {
         return duration() + start;
     }
 
+    /// @notice
+    function check(string memory _agreement) public pure returns (bool) {
+        return keccak256(bytes(_agreement)) == commitment();
+    }
+
     /// @notice The set of guardians will own the GnosisSafe that is created after
     ///         a winning resolution. All funds are transferred to this GnosisSafe.
     function guardians() public view returns (address[] memory) {
@@ -199,15 +208,15 @@ contract Pact is Clone {
         resolved = true;
 
         // interactions
-        if (success) win();
-        else lose();
+        if (success) _continue();
+        else _disband();
 
         emit Resolve(success);
     }
 
     /// @notice Creates a GnosisSafe and transfers all of the value in this contract to the
     ///         Gnosis safe.
-    function win() internal {
+    function _continue() internal {
         GnosisSafeProxy proxy = safeFactory.createProxyWithNonce({
             _singleton: address(safeSingleton),
             initializer: _safeInitializer(),
@@ -220,7 +229,7 @@ contract Pact is Clone {
     }
 
     /// @notice Refunds all contributors to the Pact.
-    function lose() internal {
+    function _disband() internal {
         uint256 length = _contributions.length;
         for (uint256 i; i < length;) {
             Contribution memory c = _contributions[i];
