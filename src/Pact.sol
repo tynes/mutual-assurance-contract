@@ -7,7 +7,7 @@ import { GnosisSafeProxy } from "safe-contracts/proxies/GnosisSafeProxy.sol";
 import { GnosisSafe } from "safe-contracts/GnosisSafe.sol";
 import { SafeCall } from "./SafeCall.sol";
 
-/// @title MutualAssuranceContractV1
+/// @title Pact
 /// @author tynes
 /// @notice A mutual assurance contract is a mechanism meant to lower the cost of cooperation.
 ///         Participants can put money into a mutual assurance contract as a credible commitment.
@@ -17,21 +17,21 @@ import { SafeCall } from "./SafeCall.sol";
 ///         This means that a GnosisSafe multisig is deployed and all of the value is transferred
 ///         to the GnosisSafe, where it can be managed by the guardians. If not enough value
 ///         accumulates, then the value will be sent back to the contributors.
-contract MutualAssuranceContractV1 is Clone {
-    /// @notice Used to determine if the MutualAssuranceContractV1 has been initialized.
+contract Pact is Clone {
+    /// @notice Used to determine if the Pact has been initialized.
     bool internal _initialized;
 
-    /// @notice Indicates the resolution status of the MutualAssuranceContractV1. When resolved, it
+    /// @notice Indicates the resolution status of the Pact. When resolved, it
     //          is no longer possible to interact with the contract.
     bool public resolved;
 
     /// @notice Used as a reentrency guard.
     uint256 internal _wall;
 
-    /// @notice The starting time of the MutualAssuranceContractV1.
+    /// @notice The starting time of the Pact.
     uint256 public start;
 
-    /// @notice The address of the GnosisSafe proxy that is created after the MutualAssuranceContractV1
+    /// @notice The address of the GnosisSafe proxy that is created after the Pact
     ///         resolves to winning. It is set to `address(0)` if the contract has not resolved yet.
     GnosisSafe public safe;
 
@@ -43,14 +43,14 @@ contract MutualAssuranceContractV1 is Clone {
     Contribution[] internal _contributions;
 
     /// @notice The address of the GnosisSafeProxyFactory. Used to create an instance of a safe
-    ///         when the MutualAssuranceContractV1 resolves to winning.
+    ///         when the Pact resolves to winning.
     GnosisSafeProxyFactory public immutable safeFactory;
 
     /// @notice The address of the GnosisSafe singleton. This is the implementation that the
     ///         instance of the proxy created by the factory will delegatecall.
     GnosisSafe public immutable safeSingleton;
 
-    /// @notice Emitted when the MutualAssuranceContractV1 resolves. It will no longer accept funds
+    /// @notice Emitted when the Pact resolves. It will no longer accept funds
     //          after it resolves.
     event Resolve(bool);
 
@@ -63,10 +63,10 @@ contract MutualAssuranceContractV1 is Clone {
     /// @notice Error when reentrency.
     error Reentrant();
 
-    /// @notice Error when trying to resolve the MutualAssuranceContractV1 too early.
+    /// @notice Error when trying to resolve the Pact too early.
     error Early();
 
-    /// @notice Error when trying to `initialize()` when the MutualAssuranceContractV1 has
+    /// @notice Error when trying to `initialize()` when the Pact has
     ///         already been initialized.
     error Initialized();
 
@@ -95,22 +95,22 @@ contract MutualAssuranceContractV1 is Clone {
         emit Assurance(sender, value);
     }
 
-    /// @notice A name for the MutualAssuranceContractV1 picked by the creator.
+    /// @notice A name for the Pact picked by the creator.
     function commitment() public pure returns (bytes32) {
         return bytes32(_getArgUint256(0));
     }
 
-    /// @notice The length of the MutualAssuranceContractV1 in seconds.
+    /// @notice The length of the Pact in seconds.
     function duration() public pure returns (uint256) {
         return _getArgUint256(32);
     }
 
-    /// @notice The amount of wei required to make the MutualAssuranceContractV1 resolve to winning.
+    /// @notice The amount of wei required to make the Pact resolve to winning.
     function lump() public pure returns (uint256) {
         return _getArgUint256(64);
     }
 
-    /// @notice The timestamp in which the MutualAssuranceContractV1 can resolve.
+    /// @notice The timestamp in which the Pact can resolve.
     function end() public view returns (uint256) {
         return duration() + start;
     }
@@ -127,7 +127,7 @@ contract MutualAssuranceContractV1 is Clone {
         return gs;
     }
 
-    /// @notice The set of contributions to the MutualAssuranceContractV1. Each contribution
+    /// @notice The set of contributions to the Pact. Each contribution
     ///         includes the account that sent the value and the amount of value sent.
     function contributions() public view returns (Contribution[] memory) {
         uint256 length = _contributions.length;
@@ -219,7 +219,7 @@ contract MutualAssuranceContractV1 is Clone {
         safe = GnosisSafe(payable(address(proxy)));
     }
 
-    /// @notice Refunds all contributors to the MutualAssuranceContractV1.
+    /// @notice Refunds all contributors to the Pact.
     function lose() internal {
         uint256 length = _contributions.length;
         for (uint256 i; i < length;) {

@@ -5,7 +5,7 @@ import { Script } from "forge-std/Script.sol";
 import { console } from "forge-std/console.sol";
 import { GnosisSafeProxyFactory } from "safe-contracts/proxies/GnosisSafeProxyFactory.sol";
 import { GnosisSafe } from "safe-contracts/GnosisSafe.sol";
-import { MutualAssuranceContractFactoryV1 } from "../src/MutualAssuranceContractFactoryV1.sol";
+import { PactFactory } from "../src/PactFactory.sol";
 
 /// @notice
 contract DeployFactory is Script {
@@ -41,7 +41,7 @@ contract DeployFactory is Script {
         if (address(_safeSingleton).code.length == 0) revert NoCode("GnosisSafe", address(_safeSingleton));
 
         vm.broadcast();
-        MutualAssuranceContractFactoryV1 factory = new MutualAssuranceContractFactoryV1{ salt: salt }({
+        PactFactory factory = new PactFactory{ salt: salt }({
             _safeFactory: _safeFactory,
             _safeSingleton: _safeSingleton
         });

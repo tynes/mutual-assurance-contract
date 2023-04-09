@@ -4,8 +4,8 @@ pragma solidity 0.8.17;
 import { Test } from "forge-std/Test.sol";
 import { GnosisSafeProxyFactory } from "safe-contracts/proxies/GnosisSafeProxyFactory.sol";
 import { GnosisSafe } from "safe-contracts/GnosisSafe.sol";
-import { MutualAssuranceContractFactoryV1 } from "../src/MutualAssuranceContractFactoryV1.sol";
-import { MutualAssuranceContractV1 } from "../src/MutualAssuranceContractV1.sol";
+import { PactFactory } from "../src/PactFactory.sol";
+import { Pact } from "../src/Pact.sol";
 
 /// @notice Test the mutual assurance contract
 contract MutualAssuranceContractTest is Test {
@@ -20,11 +20,11 @@ contract MutualAssuranceContractTest is Test {
     address internal bob;
     address internal charlie;
 
-    MutualAssuranceContractFactoryV1 internal factory;
+    PactFactory internal factory;
 
     /// @notice Set up the test env
     function setUp() external {
-        factory = new MutualAssuranceContractFactoryV1({
+        factory = new PactFactory({
             _safeFactory: safeFactory,
             _safeSingleton: safeSingleton
         });
@@ -51,7 +51,7 @@ contract MutualAssuranceContractTest is Test {
 
     /// @notice Deploys a standard MutualAssuranceContract for testing. Alice and Bob
     ///         are guardians and Charlie is not.
-    function _deploy() internal returns (MutualAssuranceContractV1) {
+    function _deploy() internal returns (Pact) {
         address[] memory _guardians = new address[](2);
         _guardians[0] = alice;
         _guardians[1] = bob;
@@ -59,9 +59,9 @@ contract MutualAssuranceContractTest is Test {
         return _deploy(_guardians);
     }
 
-    /// @notice Deploy a MutualAssuranceContractV1 with configurable guardians.
-    function _deploy(address[] memory _guardians) internal returns (MutualAssuranceContractV1) {
-        MutualAssuranceContractV1 pact = factory.create({
+    /// @notice Deploy a Pact with configurable guardians.
+    function _deploy(address[] memory _guardians) internal returns (Pact) {
+        Pact pact = factory.create({
             _commitment: bytes32(uint256(0x20)),
             _duration: 12 * 500,
             _lump: 1 ether,
@@ -96,7 +96,7 @@ contract MutualAssuranceContractTest is Test {
         uint256 duration = 1e6;
         uint256 lump = 30 ether;
 
-        MutualAssuranceContractV1 pact = factory.create({
+        Pact pact = factory.create({
             _commitment: commitment,
             _duration: duration,
             _lump: lump,
@@ -123,7 +123,7 @@ contract MutualAssuranceContractTest is Test {
         address[] memory _guardians = new address[](1);
         _guardians[0] = alice;
 
-        vm.expectRevert(abi.encodeWithSelector(MutualAssuranceContractFactoryV1.Empty.selector));
+        vm.expectRevert(abi.encodeWithSelector(PactFactory.Empty.selector));
         factory.create({
             _commitment: bytes32(uint256(1)),
             _duration: 0,
@@ -136,7 +136,7 @@ contract MutualAssuranceContractTest is Test {
     function test_factory_createNoGuardiansReverts() external {
         address[] memory _guardians = new address[](0);
 
-        vm.expectRevert(abi.encodeWithSelector(MutualAssuranceContractFactoryV1.Empty.selector));
+        vm.expectRevert(abi.encodeWithSelector(PactFactory.Empty.selector));
         factory.create({
             _commitment: bytes32(uint256(1)),
             _duration: 0,
@@ -147,7 +147,7 @@ contract MutualAssuranceContractTest is Test {
 
     /// @notice Any user can contribute.
     function test_pact_contribute() external {
-        MutualAssuranceContractV1 pact = _deploy();
+        Pact pact = _deploy();
 
         uint256 value = 1 ether;
 
@@ -160,14 +160,14 @@ contract MutualAssuranceContractTest is Test {
 
         assertEq(address(pact).balance, value);
 
-        MutualAssuranceContractV1.Contribution[] memory contribs = pact.contributions();
+        Pact.Contribution[] memory contribs = pact.contributions();
         assertEq(contribs.length, 1);
 
-        MutualAssuranceContractV1.Contribution memory contrib = contribs[0];
+        Pact.Contribution memory contrib = contribs[0];
         assertEq(contrib.from, alice);
         assertEq(contrib.amount, value);
 
-        MutualAssuranceContractV1.Contribution memory contribution = pact.contribution(0);
+        Pact.Contribution memory contribution = pact.contribution(0);
         assertEq(contribution.from, alice);
         assertEq(contribution.amount, value);
     }
@@ -177,7 +177,7 @@ contract MutualAssuranceContractTest is Test {
         address[] memory guardians = new address[](1);
         guardians[0] = alice;
 
-        MutualAssuranceContractV1 pact = _deploy(guardians);
+        Pact pact = _deploy(guardians);
 
         // Add enough value
         uint256 value = pact.lump();
@@ -223,7 +223,7 @@ contract MutualAssuranceContractTest is Test {
         address[] memory guardians = new address[](1);
         guardians[0] = alice;
 
-        MutualAssuranceContractV1 pact = _deploy(guardians);
+        Pact pact = _deploy(guardians);
 
         uint256 alicePreBalance = alice.balance;
 
