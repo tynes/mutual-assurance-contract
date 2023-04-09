@@ -55,14 +55,17 @@ contract MutualAssuranceContractTest is Test {
         address[] memory _guardians = new address[](2);
         _guardians[0] = alice;
         _guardians[1] = bob;
+        string memory agreement = "i like turtles";
 
-        return _deploy(_guardians);
+        return _deploy(_guardians, agreement);
     }
 
     /// @notice Deploy a Pact with configurable guardians.
-    function _deploy(address[] memory _guardians) internal returns (Pact) {
+    function _deploy(address[] memory _guardians, string memory _agreement) internal returns (Pact) {
+        bytes32 commitment = factory.commit(_agreement);
+
         Pact pact = factory.create({
-            _commitment: bytes32(uint256(0x20)),
+            _commitment: commitment,
             _duration: 12 * 500,
             _lump: 1 ether,
             _guardians: _guardians
@@ -70,6 +73,21 @@ contract MutualAssuranceContractTest is Test {
 
         vm.label(address(pact), "pact");
         return pact;
+    }
+
+    /// @notice Refactor into a builder pattern if we need more configurable
+    ///         pacts.
+    function _deploy(string memory _agreement) internal returns (Pact) {
+        address[] memory guardians = new address[](2);
+        guardians[0] = alice;
+        guardians[1] = bob;
+
+        return _deploy(guardians, _agreement);
+    }
+
+    function _deploy(address[] memory _guardians) internal returns (Pact) {
+        string memory agreement = "i like turtles";
+        return _deploy(_guardians, agreement);
     }
 
     /// @notice Ensures that the constructor initializes the factory correctly
@@ -172,6 +190,13 @@ contract MutualAssuranceContractTest is Test {
         assertEq(contribution.amount, value);
     }
 
+    /// @notice The commitment feature works as expected.
+    function test_pact_commit() external {
+        string memory commitment = "I solemnly swear that I am up to no good";
+        Pact pact = _deploy(commitment);
+        assertEq(factory.commit(commitment), pact.commitment());
+    }
+
     /// @notice Ensures that all the side effects of winning a pact are correct.
     function test_pact_win() external {
         address[] memory guardians = new address[](1);
@@ -195,9 +220,9 @@ contract MutualAssuranceContractTest is Test {
         uint256 end = pact.end();
         vm.warp(end);
 
-        // It should be resolvable and successful
+        // It should be resolvable and continuing
         assertTrue(pact.resolvable());
-        assertTrue(pact.successful());
+        assertTrue(pact.continuing());
 
         vm.expectEmit(true, true, true, true, address(pact));
         emit Resolve(true);
@@ -240,7 +265,7 @@ contract MutualAssuranceContractTest is Test {
         vm.warp(end);
 
         assertTrue(pact.resolvable());
-        assertFalse(pact.successful());
+        assertFalse(pact.continuing());
 
         vm.expectEmit(true, true, true, true, address(pact));
         emit Resolve(false);

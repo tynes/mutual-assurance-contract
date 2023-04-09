@@ -10,23 +10,21 @@ import { SafeCall } from "./SafeCall.sol";
 /// @title Pact
 /// @author tynes
 /// @notice A mutual assurance contract is a mechanism meant to lower the cost of coordination.
-///         A pre-agreed upon outcome
-
-///         Participants can put money into a mutual assurance contract as a credible commitment.
-///         The more money that accumulates into the contract, the lower the activation energy for
-///         additional participants to put money into the contract. If enough value is placed into
-///         the contract during the contribution period, then the contract can resolve to winning.
-///         This means that a GnosisSafe multisig is deployed and all of the value is transferred
-///         to the GnosisSafe, where it can be managed by the guardians. If not enough value
-///         accumulates, then the value will be sent back to the contributors.
+///         A pre-agreed upon outcome is easier to reach as additional credible commitments
+///         are added. Ether can be sent to the contract and if a pre-agreed upon amount is
+///         accumulated within a pre-agreed amount of time, the coordination can continue.
+///         If not, the group disbands and all ether is returned.
+/// @dev    A new GnosisSafe is created when continuing and all ether is transferred to it.
+///         It is expected that the pre-agreed upon commitment is observed. The rule of law
+///         dictates meatspace.
 contract Pact is Clone {
     string constant public version = "0.1.0";
 
-    /// @notice Used to determine if the Pact has been initialized.
+    /// @notice Used to determine if the pact has been initialized.
     bool internal _initialized;
 
-    /// @notice Indicates the resolution status of the Pact. When resolved, it
-    //          is no longer possible to interact with the contract.
+    /// @notice Indicates the resolution status of the pact. When resolved, it
+    //          is no longer possible to interact with the pact.
     bool public resolved;
 
     /// @notice Used as a reentrency guard.
@@ -185,7 +183,7 @@ contract Pact is Clone {
 
     /// @notice Determine if the contract will resolve to winning. The balance must be larger than
     //          or equal to the lump.
-    function successful() public view returns (bool) {
+    function continuing() public view returns (bool) {
         return address(this).balance >= lump();
     }
 
@@ -202,7 +200,7 @@ contract Pact is Clone {
         // ensure enough time has passed
         if (!resolvable()) revert Early();
 
-        bool success = successful();
+        bool success = continuing();
 
         // effects
         resolved = true;
