@@ -50,25 +50,25 @@ contract MutualAssuranceContractTest is Test {
     }
 
     /// @notice Deploys a standard MutualAssuranceContract for testing. Alice and Bob
-    ///         are guardians and Charlie is not.
+    ///         are leads and Charlie is not.
     function _deploy() internal returns (Pact) {
-        address[] memory _guardians = new address[](2);
-        _guardians[0] = alice;
-        _guardians[1] = bob;
+        address[] memory _leads = new address[](2);
+        _leads[0] = alice;
+        _leads[1] = bob;
         string memory agreement = "i like turtles";
 
-        return _deploy(_guardians, agreement);
+        return _deploy(_leads, agreement);
     }
 
-    /// @notice Deploy a Pact with configurable guardians.
-    function _deploy(address[] memory _guardians, string memory _agreement) internal returns (Pact) {
+    /// @notice Deploy a Pact with configurable leads.
+    function _deploy(address[] memory _leads, string memory _agreement) internal returns (Pact) {
         bytes32 commitment = factory.commit(_agreement);
 
         Pact pact = factory.create({
             _commitment: commitment,
             _duration: 12 * 500,
-            _lump: 1 ether,
-            _guardians: _guardians
+            _sum: 1 ether,
+            _leads: _leads
         });
 
         vm.label(address(pact), "pact");
@@ -78,16 +78,16 @@ contract MutualAssuranceContractTest is Test {
     /// @notice Refactor into a builder pattern if we need more configurable
     ///         pacts.
     function _deploy(string memory _agreement) internal returns (Pact) {
-        address[] memory guardians = new address[](2);
-        guardians[0] = alice;
-        guardians[1] = bob;
+        address[] memory leads = new address[](2);
+        leads[0] = alice;
+        leads[1] = bob;
 
-        return _deploy(guardians, _agreement);
+        return _deploy(leads, _agreement);
     }
 
-    function _deploy(address[] memory _guardians) internal returns (Pact) {
+    function _deploy(address[] memory _leads) internal returns (Pact) {
         string memory agreement = "i like turtles";
-        return _deploy(_guardians, agreement);
+        return _deploy(_leads, agreement);
     }
 
     /// @notice Ensures that the constructor initializes the factory correctly
@@ -100,25 +100,25 @@ contract MutualAssuranceContractTest is Test {
         assertEq(_safeSingleton, address(safeSingleton));
         assertTrue(_safeSingleton.code.length > 0);
 
-        address implementation = address(factory.implementation());
-        assertTrue(implementation != address(0));
-        assertTrue(implementation.code.length != 0);
+        address pact = address(factory.pact());
+        assertTrue(pact != address(0));
+        assertTrue(pact.code.length != 0);
     }
 
     /// @notice Ensures that a factory can be created with sane config
     function test_factory_create() external {
-        address[] memory _guardians = new address[](1);
-        _guardians[0] = alice;
+        address[] memory _leads = new address[](1);
+        _leads[0] = alice;
 
         bytes32 commitment = keccak256(abi.encode(block.timestamp));
         uint256 duration = 1e6;
-        uint256 lump = 30 ether;
+        uint256 sum = 30 ether;
 
         Pact pact = factory.create({
             _commitment: commitment,
             _duration: duration,
-            _lump: lump,
-            _guardians: _guardians
+            _sum: sum,
+            _leads: _leads
         });
 
         vm.label(address(pact), "pact");
@@ -130,36 +130,36 @@ contract MutualAssuranceContractTest is Test {
         assertEq(pact.start(), block.timestamp);
 
         assertEq(pact.duration(), duration);
-        assertEq(pact.lump(), lump);
+        assertEq(pact.sum(), sum);
         assertEq(pact.commitment(), commitment);
-        assertEq(pact.guardians(), _guardians);
+        assertEq(pact.leads(), _leads);
         assertEq(address(pact.safe()), address(0));
     }
 
     /// @notice Creation reverts when no value is configured to be able to win.
-    function test_factory_createNoLumpReverts() external {
-        address[] memory _guardians = new address[](1);
-        _guardians[0] = alice;
+    function test_factory_createNosumReverts() external {
+        address[] memory _leads = new address[](1);
+        _leads[0] = alice;
 
         vm.expectRevert(abi.encodeWithSelector(PactFactory.Empty.selector));
         factory.create({
             _commitment: bytes32(uint256(1)),
             _duration: 0,
-            _lump: 0,
-            _guardians: _guardians
+            _sum: 0,
+            _leads: _leads
         });
     }
 
-    /// @notice Creation reverts when no guardians are configured.
-    function test_factory_createNoGuardiansReverts() external {
-        address[] memory _guardians = new address[](0);
+    /// @notice Creation reverts when no leads are configured.
+    function test_factory_createNoleadsReverts() external {
+        address[] memory _leads = new address[](0);
 
         vm.expectRevert(abi.encodeWithSelector(PactFactory.Empty.selector));
         factory.create({
             _commitment: bytes32(uint256(1)),
             _duration: 0,
-            _lump: 1 ether,
-            _guardians: _guardians
+            _sum: 1 ether,
+            _leads: _leads
         });
     }
 
@@ -199,13 +199,13 @@ contract MutualAssuranceContractTest is Test {
 
     /// @notice Ensures that all the side effects of winning a pact are correct.
     function test_pact_win() external {
-        address[] memory guardians = new address[](1);
-        guardians[0] = alice;
+        address[] memory leads = new address[](1);
+        leads[0] = alice;
 
-        Pact pact = _deploy(guardians);
+        Pact pact = _deploy(leads);
 
         // Add enough value
-        uint256 value = pact.lump();
+        uint256 value = pact.sum();
 
         vm.expectEmit(true, true, true, true, address(pact));
         emit Assurance(alice, value);
@@ -238,21 +238,21 @@ contract MutualAssuranceContractTest is Test {
         assertTrue(address(safe).code.length > 0);
 
         address[] memory owners = safe.getOwners();
-        assertEq(guardians, owners);
+        assertEq(leads, owners);
         assertEq(safe.getThreshold(), owners.length);
         assertEq(address(safe).balance, value);
     }
 
     /// @notice Test a failed resolution
     function test_pact_lose() external {
-        address[] memory guardians = new address[](1);
-        guardians[0] = alice;
+        address[] memory leads = new address[](1);
+        leads[0] = alice;
 
-        Pact pact = _deploy(guardians);
+        Pact pact = _deploy(leads);
 
         uint256 alicePreBalance = alice.balance;
 
-        uint256 value = pact.lump() - 1;
+        uint256 value = pact.sum() - 1;
 
         vm.expectEmit(true, true, true, true, address(pact));
         emit Assurance(alice, value);

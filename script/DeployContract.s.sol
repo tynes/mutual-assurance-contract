@@ -32,24 +32,24 @@ contract DeployContract is Script {
         (
             bytes32 commitment,
             uint256 duration,
-            uint256 lump,
-            address[] memory guardians
+            uint256 sum,
+            address[] memory leads
         ) = abi.decode(_input, (bytes32, uint256, uint256, address[]));
 
         console.log("commitment:", vm.toString(commitment));
         console.log("duration:", duration);
-        console.log("lump:", lump);
-        console.log("guardians:");
-        for (uint256 i; i < guardians.length; i++) {
-            console.log(" ", guardians[i]);
+        console.log("sum:", sum);
+        console.log("leads:");
+        for (uint256 i; i < leads.length; i++) {
+            console.log(" ", leads[i]);
         }
 
         vm.broadcast();
         Pact pact = PactFactory(factory).create({
             _commitment: commitment,
             _duration: duration,
-            _lump: lump,
-            _guardians: guardians
+            _sum: sum,
+            _leads: leads
         });
 
         address addr = address(pact);

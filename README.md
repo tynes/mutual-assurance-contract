@@ -8,8 +8,20 @@ A pact is an implementation of a [mutual assurance contract](https://en.wikipedi
 
 ## Usage
 
-Needs to have the deployed contract addresses here.
+To coordinate with others, first come to an offchain agreement on the rules of the engagement. The
+`PactFactory` can be used to create a mutual assurance contract. An instance of a mutual assurance
+contract is referred to a pact, (an instance of a `Pact`). Commit to the offchain agreement when
+creating a pact. A pact also needs a duration (amount of time until it can be resolved), a sum of
+ether (denominated in wei) and a set of leads to control the ether if the coordination continues.
 
+### optimism-goerli
+
+| Contract | Address | Version |
+| -------- | ------- | ------- |
+| `PactFactory` | [0x6E49B117A895eaf0037279B9Dc625D3A4C2065CC](https://goerli-optimism.etherscan.io/address/0x6E49B117A895eaf0037279B9Dc625D3A4C2065CC) | `0.1.0` |
+| `Pact` (implementation) | [0x1d8Edff9F794684E78D40Aa5b2a5799b2383a2a5](https://goerli-optimism.etherscan.io/address/0x1d8Edff9F794684E78D40Aa5b2a5799b2383a2a5) | `0.1.0` |
+| `PactFactory` | [0x642a7864cBe44ED24D408Cbc38117Cfd6E6D1a95](https://goerli-optimism.etherscan.io/address/0x642a7864cBe44ED24D408Cbc38117Cfd6E6D1a95) | `0.2.0` |
+| `Pact` (implementation) | [0x4eE4ff6D24c8D334fA41b560Dac95BB3CEF828a1](https://goerli-optimism.etherscan.io/address/0x4eE4ff6D24c8D334fA41b560Dac95BB3CEF828a1) | `0.2.0` |
 
 ## Deployment
 

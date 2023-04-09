@@ -6,12 +6,10 @@ import { console } from "forge-std/console.sol";
 import { GnosisSafeProxyFactory } from "safe-contracts/proxies/GnosisSafeProxyFactory.sol";
 import { GnosisSafe } from "safe-contracts/GnosisSafe.sol";
 import { PactFactory } from "../src/PactFactory.sol";
+import { Pact } from "../src/Pact.sol";
 
 /// @notice
 contract DeployFactory is Script {
-    /// @notice
-    bytes32 constant internal salt = bytes32(uint256(0x01));
-
     /// @notice
     error UnknownChain(uint256);
 
@@ -40,15 +38,29 @@ contract DeployFactory is Script {
         if (address(_safeFactory).code.length == 0) revert NoCode("GnosisSafeProxyFactory", address(_safeFactory));
         if (address(_safeSingleton).code.length == 0) revert NoCode("GnosisSafe", address(_safeSingleton));
 
+        Pact getter = new Pact({
+            _safeFactory: _safeFactory,
+            _safeSingleton: _safeSingleton
+        });
+
+        string memory version = getter.version();
+        bytes32 salt = keccak256(bytes(version));
+
+        console.log("create2 salt:", vm.toString(salt));
+
         vm.broadcast();
         PactFactory factory = new PactFactory{ salt: salt }({
             _safeFactory: _safeFactory,
             _safeSingleton: _safeSingleton
         });
 
-        address addr = address(factory);
-        console.log("factory address:", addr);
-        return addr;
+        Pact pact = factory.pact();
+
+        console.log("factory address:", address(factory));
+        console.log("factory version:", factory.version());
+        console.log("pact singleton address:", address(pact));
+        console.log("pact version:", pact.version());
+        return address(factory);
     }
 
     /// @notice

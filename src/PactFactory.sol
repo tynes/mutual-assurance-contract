@@ -12,19 +12,19 @@ import { GnosisSafe } from "safe-contracts/GnosisSafe.sol";
 contract PactFactory {
     using ClonesWithImmutableArgs for address;
 
-    /// @notice The version of the factory.
-    string constant public version = "0.1.0";
-
     /// @notice A reference to the implementation of the Pact. This is the code
     //          that users will interact with when they create a new instance of a
     //          Pact.
-    Pact public immutable implementation;
+    Pact public immutable pact;
 
     /// @notice A reference to the GnosisSafeProxyFactory.
     GnosisSafeProxyFactory public immutable safeFactory;
 
     /// @notice A reference to the GnosisSafe singleton.
     GnosisSafe public immutable safeSingleton;
+
+    /// @notice The version of the factory.
+    string public version;
 
     /// @notice Emitted when a Pact is created, includes the address of the
     ///         Pact.
@@ -37,31 +37,31 @@ contract PactFactory {
     //          implementation has references to the GnosisSafe contracts and is used to create
     //          cheap clones-with-immutable-args clones for each instance of a mutual assurace contract.
     constructor(GnosisSafeProxyFactory _safeFactory, GnosisSafe _safeSingleton) {
-        implementation = new Pact(_safeFactory, _safeSingleton);
+        pact = new Pact(_safeFactory, _safeSingleton);
         safeFactory = _safeFactory;
         safeSingleton = _safeSingleton;
+        version = pact.version();
     }
 
     /// @notice Create a Pact instance.
     /// @param _commitment Represents a name for the Pact.
     /// @param _duration   The number of seconds that the Pact should be open
     //                     for participation.
-    /// @param _lump       The amount of wei that must accumulate in the contract for it to resolve
+    /// @param _sum       The amount of wei that must accumulate in the contract for it to resolve
     ///                    to winning.
-    /// @param _guardians  The owners of the GnosisSafe that is created when the Pact
-    ///                    resolves to winning.
+    /// @param _leads      The custodians of the accumulated ether if the coordination continues.
     function create(
         bytes32 _commitment,
         uint256 _duration,
-        uint256 _lump,
-        address[] memory _guardians
+        uint256 _sum,
+        address[] memory _leads
     ) external returns (Pact) {
-        if (_lump == 0 || _guardians.length == 0) revert Empty();
+        if (_sum == 0 || _leads.length == 0) revert Empty();
 
-        bytes memory data = abi.encodePacked(_commitment, _duration, _lump);
-        address clone = address(implementation).clone(data);
+        bytes memory data = abi.encodePacked(_commitment, _duration, _sum);
+        address clone = address(pact).clone(data);
         Pact instance = Pact(payable(clone));
-        instance.initialize(_guardians);
+        instance.initialize(_leads);
 
         emit Create(address(instance));
         return instance;
