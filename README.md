@@ -71,8 +71,8 @@ leads. The leads can choose to update this value themselves.
 
 ## Philosophy
 
-It is incredibly important that the language is simple enough that users can understand the UX
-intuitively. Vocabulary should be standard and synonyms are bad.
+It is incredibly important that the language is simple and internally consistent enough that users
+can understand the UX intuitively. Vocabulary should be standard and synonyms are bad.
 
 It is an anti-pattern to build a platform when there isn't a usecase with product market fit already
 using the platform. The first usecase of `pact` is coordinating nomads to be in the same location at
