@@ -31,11 +31,36 @@ see that others are committed, reducing the costs to committing themselves.
 
 ## Usage
 
-To coordinate with others, first come to an offchain agreement on the rules of the engagement. The
-`PactFactory` can be used to create a mutual assurance contract. An instance of a mutual assurance
-contract is referred to a pact, (an instance of a `Pact`). Commit to the offchain agreement when
-creating a pact. A pact also needs a duration (amount of time until it can be resolved), a sum of
-ether (denominated in wei) and a set of leads to control the ether if the coordination continues.
+The `PactFactory` can be used to create a pact, or an instance of a mutual assurance contract.
+First come to an offchain agreement on the rules of the engagement. A commitment to these rules
+should be included with each pact. A pact also needs a duration (amount of time until it can be
+resolved), a sum of ether (denominated in wei) and a set of leads to control the ether if the
+coordination continues.
+
+To create a pact, call `create(bytes32 _commitment, uint256 _duration, uint256 _sum, address[] memory _leads)`
+on the `PactFactory`.
+
+### Arguments
+
+#### `_commitment`
+
+This is a commitment to the rules of the engagement. Once the rules exist, it is easy to call the
+`commit(string)(bytes32)` function on the `PactFactory` to get back the commitment.
+
+#### `_duration `
+
+This is the number of seconds that the pact should be live for.
+
+#### `_sum`
+
+This is the amount of wei that the pact requires for coordination to continue.
+Note that 10^18 wei is 1 ether.
+
+#### `_leads`
+
+The custodians of the funds if coordination continues. A Gnosis Safe is created and
+the funds are transferred there. The Gnosis Safe has a signing threshold of all of the
+leads. The leads can choose to update this value themselves.
 
 ### optimism-goerli
 
