@@ -14,10 +14,16 @@ check "$ETH_RPC_URL"
 check "$ETHERSCAN_API_KEY"
 check "$PRIVATE_KEY"
 
+ADDRESS=$(cast wallet address --private-key $PRIVATE_KEY)
+BALANCE=$(cast --to-unit $(cast balance $ADDRESS) ether)
+echo "Using deployer: $ADDRESS"
+echo "Balance: $BALANCE"
+
 forge script script/DeployFactory.s.sol \
     --broadcast \
-    --rpc-url $ETH_RPC_URL \
-    --private-key $PRIVATE_KEY \
-    --etherscan-api-key $ETHERSCAN_API_KEY \
+    --froms "$ADDRESS" \
+    --rpc-url "$ETH_RPC_URL" \
+    --private-key "$PRIVATE_KEY" \
+    --etherscan-api-key "$ETHERSCAN_API_KEY" \
     --verify \
     --slow
