@@ -278,4 +278,28 @@ contract MutualAssuranceContractTest is Test {
         uint256 alicePostBalance = alice.balance;
         assertEq(alicePostBalance, alicePreBalance);
     }
+
+    /// @notice Only allow the Pact to accept the exact amount of ether. This creates a race
+    ///         condition.
+    function test_pact_overflow() external {
+        Pact pact = _deploy();
+
+        uint256 value = pact.sum() - 1;
+
+        vm.expectEmit(true, true, true, true, address(pact));
+        emit Assurance(alice, value);
+
+        vm.prank(alice);
+        (bool success, ) = address(pact).call{ value: value }(hex"");
+        assertTrue(success);
+
+        vm.expectRevert(abi.encodeWithSelector(Pact.Overflow.selector));
+        address(pact).call{ value: 2 }(hex"");
+
+        vm.expectEmit(true, true, true, true, address(pact));
+        emit Assurance(alice, 1);
+
+        vm.prank(alice);
+        (success, ) = address(pact).call{ value: 1 }(hex"");
+    }
 }
