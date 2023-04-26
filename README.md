@@ -66,6 +66,8 @@ leads. The leads can choose to update this value themselves.
 
 | Contract | Address | Version |
 | -------- | ------- | ------- |
+| `PactFactory` | [0x0bc342e7bbf737ba123b1167e528a28cebb8b679](https://optimistic.etherscan.io/address/0x0bc342e7bbf737ba123b1167e528a28cebb8b679) | `0.3.0` |
+| `Pact` (implementation) | [0x60d1a1755065e4cac8777248c2878c847c9a5dd5](https://optimistic.etherscan.io/address/0x60d1a1755065e4cac8777248c2878c847c9a5dd5) | `0.3.0` |
 | `PactFactory` | [0x642a7864cBe44ED24D408Cbc38117Cfd6E6D1a95](https://optimistic.etherscan.io/address/0x642a7864cBe44ED24D408Cbc38117Cfd6E6D1a95) | `0.2.0` |
 | `Pact` (implementation) | [0x4eE4ff6D24c8D334fA41b560Dac95BB3CEF828a1](https://optimistic.etherscan.io/address/0x4eE4ff6D24c8D334fA41b560Dac95BB3CEF828a1) | `0.2.0` |
 

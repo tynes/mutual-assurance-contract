@@ -18,7 +18,7 @@ import { SafeCall } from "./SafeCall.sol";
 ///         It is expected that the pre-agreed upon commitment is observed. The rule of law
 ///         dictates meatspace.
 contract Pact is Clone {
-    string constant public version = "0.2.0";
+    string constant public version = "0.3.0";
 
     /// @notice Used to determine if the pact has been initialized.
     bool internal _initialized;
@@ -68,6 +68,9 @@ contract Pact is Clone {
     /// @notice Error when trying to resolve the Pact too early.
     error Early();
 
+    /// @notice Error when putting too much value into the Pact.
+    error Overflow();
+
     /// @notice Error when trying to `initialize()` when the Pact has
     ///         already been initialized.
     error Initialized();
@@ -90,6 +93,7 @@ contract Pact is Clone {
     ///         so that ether can be returned in case not enough capital is accumulated.
     fallback() external payable {
         if (resolved) revert Resolved();
+        if (address(this).balance > sum()) revert Overflow();
 
         address sender = msg.sender;
         uint256 value = msg.value;
@@ -119,7 +123,12 @@ contract Pact is Clone {
         return duration() + start;
     }
 
-    /// @notice
+    /// @notice Convenience getter for the balance in the Pact.
+    function balance() public view returns (uint256) {
+        return address(this).balance;
+    }
+
+    /// @notice Useful for ensuring that the agreement matches the commitment.
     function check(string memory _agreement) public pure returns (bool) {
         return keccak256(bytes(_agreement)) == commitment();
     }
